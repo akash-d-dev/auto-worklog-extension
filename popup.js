@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const workModeSelect = document.getElementById('work-mode');
     const tasksContainer = document.getElementById('tasks-container');
     const saveBtn = document.getElementById('save-btn');
+    const deactivateBtn = document.getElementById('deactivate-btn');
     const addTaskBtn = document.getElementById('add-task-btn');
     const messageDiv = document.getElementById('message');
 
@@ -118,5 +119,63 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.style.color = 'red';
         }
     });
+
+    // 4. Deactivate & Delete Button Logic
+    if (deactivateBtn) {
+        deactivateBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to deactivate and delete your data? This cannot be undone.')) {
+                return;
+            }
+
+            messageDiv.textContent = 'Deactivating...';
+            messageDiv.style.color = 'blue';
+
+            // Get Token
+            const storageData = await chrome.storage.local.get(['authToken']);
+            const authToken = storageData.authToken;
+
+            if (!authToken) {
+                messageDiv.textContent = 'Error: No Auth Token captured yet!';
+                messageDiv.style.color = 'red';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${SERVER_URL}/api/user`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        authToken: authToken
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.textContent = 'Success! User deactivated and data deleted.';
+                    messageDiv.style.color = 'green';
+                    
+                    // Optional: Clear local storage
+                    chrome.storage.local.clear(() => {
+                        // Refresh UI
+                        statusDiv.textContent = 'Auth Token: Missing';
+                        statusDiv.classList.remove('status-active');
+                        tasksContainer.innerHTML = '';
+                        addTaskTextarea();
+                    });
+                } else {
+                    messageDiv.textContent = `Error: ${data.error || 'Failed to deactivate'}`;
+                    messageDiv.style.color = 'red';
+                }
+
+            } catch (error) {
+                console.error('Network Error:', error);
+                messageDiv.textContent = 'Network Error: Could not reach server.';
+                messageDiv.style.color = 'red';
+            }
+        });
+    }
 });
 
