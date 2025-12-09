@@ -81,6 +81,15 @@
     Browse Kalvium Community to capture your Auth Token automatically.
   </div>
 
+  <label for="work-mode">Working Mode</label>
+  <select id="work-mode" style="width: 100%; padding: 8px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc;">
+    <option value="Working Remotely (Not in the Kalvium environment)" selected>Working Remotely (Not in the Kalvium environment)</option>
+    <option value="Working out of the Kalvium environment (Classroom)">Working out of the Kalvium environment (Classroom)</option>
+    <option value="Working on-site (Company location)">Working on-site (Company location)</option>
+    <!-- <option value="Today was a company Holiday">Today was a company Holiday</option>
+    <option value="Took an approved leave from work">Took an approved leave from work</option> -->
+  </select>
+
   <label>Worklog Tasks (Randomly selected daily)</label>
   <div id="tasks-container">
     <textarea class="task-entry" placeholder="Task 1: e.g. Fixed bug in payment gateway..."></textarea>

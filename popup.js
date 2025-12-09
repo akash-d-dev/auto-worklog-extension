@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const statusDiv = document.getElementById('status');
+    const workModeSelect = document.getElementById('work-mode');
     const tasksContainer = document.getElementById('tasks-container');
     const saveBtn = document.getElementById('save-btn');
     const addTaskBtn = document.getElementById('add-task-btn');
@@ -9,13 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const SERVER_URL = 'http://localhost:3000/api/register';
 
     // 1. Check for Auth Token in Storage
-    chrome.storage.local.get(['authToken', 'worklogTasks'], (result) => {
+    chrome.storage.local.get(['authToken', 'worklogTasks', 'workMode'], (result) => {
         if (result.authToken) {
             statusDiv.textContent = 'Auth Token: Captured';
             statusDiv.classList.remove('status-inactive');
             statusDiv.classList.add('status-active');
         } else {
             statusDiv.textContent = 'Auth Token: Missing';
+        }
+
+        // Load saved work mode
+        if (result.workMode) {
+            workModeSelect.value = result.workMode;
         }
 
         // Load saved tasks if any
@@ -58,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Get Work Mode
+        const workMode = workModeSelect.value;
+
         // Get Tasks
         const taskInputs = document.querySelectorAll('.task-entry');
         const tasks = [];
@@ -72,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Save Tasks to Local Storage
-        chrome.storage.local.set({ worklogTasks: tasks });
+        // Save Tasks and WorkMode to Local Storage
+        chrome.storage.local.set({ worklogTasks: tasks, workMode: workMode });
 
         // Send to Server
         try {
@@ -84,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({
                     authToken: authToken,
+                    workMode: workMode,
                     worklogTasks: tasks
                 })
             });
