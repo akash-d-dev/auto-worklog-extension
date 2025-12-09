@@ -31,14 +31,16 @@ chrome.webRequest.onSendHeaders.addListener(
 
 async function checkAndRefreshToken(token) {
   try {
-    const data = await chrome.storage.local.get(['lastTokenRefresh']);
-    const lastRefresh = data.lastTokenRefresh;
-    const now = Date.now();
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const data = await chrome.storage.local.get(['lastTokenRefreshDate']);
+    const lastRefreshDate = data.lastTokenRefreshDate;
+    
+    const now = new Date();
+    // Format date as "YYYY-MM-DD" to compare calendar days
+    const todayStr = now.toISOString().split('T')[0];
 
-    // Check if we need to refresh (if never refreshed or > 24 hours ago)
-    if (!lastRefresh || (now - lastRefresh > ONE_DAY_MS)) {
-      console.log('Attempting to refresh token on server...');
+    // Check if we need to refresh (if never refreshed or date is different)
+    if (!lastRefreshDate || lastRefreshDate !== todayStr) {
+      console.log(`Attempting to refresh token on server (Last: ${lastRefreshDate}, Today: ${todayStr})...`);
       
       const response = await fetch(REFRESH_URL, {
         method: 'POST',
@@ -50,8 +52,8 @@ async function checkAndRefreshToken(token) {
 
       if (response.ok) {
         console.log('Token refreshed successfully on server.');
-        // Update timestamp
-        await chrome.storage.local.set({ lastTokenRefresh: now });
+        // Update timestamp to today's date string
+        await chrome.storage.local.set({ lastTokenRefreshDate: todayStr });
       } else {
         const errData = await response.json();
         console.error('Failed to refresh token:', errData);
@@ -59,7 +61,7 @@ async function checkAndRefreshToken(token) {
         // that they need to setup the extension popup first.
       }
     } else {
-      console.log('Token refresh skipped (already done within 24h).');
+      console.log('Token refresh skipped (already done today).');
     }
   } catch (error) {
     console.error('Error refreshing token:', error);
