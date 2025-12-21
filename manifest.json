@@ -4,10 +4,10 @@
   "version": "1.0",
   "description": "Automatically captures auth token and allows users to submit worklogs daily.",
   "icons": {
-    "16": "logo.png",
-    "32": "logo.png",
-    "48": "logo.png",
-    "128": "logo.png"
+    "16": "auto-worklog.png",
+    "32": "auto-worklog.png",
+    "48": "auto-worklog.png",
+    "128": "auto-worklog.png"
   },
   "permissions": [
     "storage",
@@ -27,9 +27,9 @@
     "default_popup": "popup.html",
     "default_title": "Auto Worklog Config",
     "default_icon": {
-      "16": "logo.png",
-      "32": "logo.png",
-      "48": "logo.png"
+      "16": "auto-worklog.png",
+      "32": "auto-worklog.png",
+      "48": "auto-worklog.png"
     }
   },
   "content_scripts": [
