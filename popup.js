@@ -7,18 +7,82 @@ document.addEventListener('DOMContentLoaded', () => {
     const addTaskBtn = document.getElementById('add-task-btn');
     const messageDiv = document.getElementById('message');
 
+    // Captured Token Elements
+    const statusText = document.getElementById('status-text');
+    const capturedTokenScroll = document.getElementById('captured-token-scroll');
+    const capturedTokenValue = document.getElementById('captured-token-value');
+
+    // User Info Elements
+    const userInfoSection = document.getElementById('user-info-section');
+    const infoEmail = document.getElementById('info-email');
+    const infoToken = document.getElementById('info-token');
+    const infoCreated = document.getElementById('info-created');
+    const infoUpdated = document.getElementById('info-updated');
+    const infoLastSubmitted = document.getElementById('info-last-submitted');
+
     // SERVER URL
-    // const SERVER_URL = 'http://localhost:3000';
-    const SERVER_URL = 'https://auto-worklog-submission.onrender.com';
+    const SERVER_URL = 'http://localhost:3000';
+    // const SERVER_URL = 'https://auto-worklog-submission.onrender.com';
+
+    // Helper function to format date
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // Function to fetch and display user info
+    async function fetchUserInfo(authToken) {
+        try {
+            const response = await fetch(`${SERVER_URL}/api/user-info`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ authToken })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                userInfoSection.style.display = 'block';
+                infoEmail.textContent = data.email || '-';
+                // Collapse multiple asterisks to just "***"
+                const token = data.maskedToken || '-';
+                infoToken.textContent = token.replace(/^\*+/, '***');
+                infoCreated.textContent = formatDate(data.createdAt);
+                infoUpdated.textContent = formatDate(data.updatedAt);
+                infoLastSubmitted.textContent = data.lastSubmittedAt ? formatDate(data.lastSubmittedAt) : 'Never';
+            } else {
+                // User not registered yet, hide the section
+                userInfoSection.style.display = 'none';
+            }
+        } catch (error) {
+            console.log('Could not fetch user info:', error);
+            userInfoSection.style.display = 'none';
+        }
+    }
 
     // 1. Check for Auth Token in Storage
     chrome.storage.local.get(['authToken', 'worklogTasks', 'workMode'], (result) => {
         if (result.authToken) {
-            statusDiv.textContent = 'Auth Token: Captured';
+            statusText.textContent = 'Auth Token: Captured';
             statusDiv.classList.remove('status-inactive');
             statusDiv.classList.add('status-active');
+            
+            // Show full captured token
+            capturedTokenScroll.style.display = 'block';
+            capturedTokenValue.textContent = result.authToken;
+            
+            // Fetch user info from server
+            fetchUserInfo(result.authToken);
         } else {
-            statusDiv.textContent = 'Auth Token: Missing';
+            statusText.textContent = 'Auth Token: Missing';
+            capturedTokenScroll.style.display = 'none';
+            userInfoSection.style.display = 'none';
         }
 
         // Load saved work mode
@@ -108,6 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 messageDiv.textContent = 'Success! Worklogs configured and sent to server.';
                 messageDiv.style.color = 'green';
+                // Refresh user info to show updated data
+                fetchUserInfo(authToken);
             } else {
                 messageDiv.textContent = `Error: ${data.error || 'Failed to save on server'}`;
                 messageDiv.style.color = 'red';
@@ -160,8 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Optional: Clear local storage
                     chrome.storage.local.clear(() => {
                         // Refresh UI
-                        statusDiv.textContent = 'Auth Token: Missing';
+                        statusText.textContent = 'Auth Token: Missing';
                         statusDiv.classList.remove('status-active');
+                        capturedTokenScroll.style.display = 'none';
+                        userInfoSection.style.display = 'none';
                         tasksContainer.innerHTML = '';
                         addTaskTextarea();
                     });

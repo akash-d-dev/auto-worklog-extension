@@ -68,17 +68,80 @@
     #tasks-container {
         margin-top: 5px;
     }
+    #token-scroll-container {
+        scrollbar-width: none; /* Firefox */
+    }
+    #token-scroll-container::-webkit-scrollbar {
+        height: 4px;
+        display: none; /* Chrome, Safari */
+    }
+    #token-scroll-container:hover::-webkit-scrollbar {
+        display: block;
+    }
+    #token-scroll-container:hover {
+        scrollbar-width: thin; /* Firefox */
+    }
+    #token-scroll-container::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.5);
+        border-radius: 2px;
+    }
+    #captured-token-scroll {
+        scrollbar-width: none;
+        overflow-y: hidden;
+    }
+    #captured-token-scroll::-webkit-scrollbar {
+        height: 4px;
+        display: none;
+    }
+    #captured-token-scroll::-webkit-scrollbar:vertical {
+        display: none;
+        width: 0;
+    }
+    #captured-token-scroll:hover::-webkit-scrollbar {
+        display: block;
+    }
+    #captured-token-scroll:hover::-webkit-scrollbar:vertical {
+        display: none;
+        width: 0;
+    }
+    #captured-token-scroll:hover {
+        scrollbar-width: thin;
+    }
+    #captured-token-scroll::-webkit-scrollbar-thumb {
+        background: rgba(0,100,0,0.4);
+        border-radius: 2px;
+    }
   </style>
 </head>
 <body>
   <h2>Auto Worklog Submitter</h2>
   
   <div id="status" class="status-container status-inactive">
-    Auth Token: Not Found
+    <div id="status-text">Auth Token: Not Found</div>
+    <div id="captured-token-scroll" style="display: none; overflow-x: auto; max-width: 100%; white-space: nowrap; margin-top: 6px;">
+      <code id="captured-token-value" style="background: rgba(0,0,0,0.15); padding: 2px 6px; border-radius: 3px; font-size: 9px;">-</code>
+    </div>
   </div>
-  
+
   <div class="info-text">
-    Browse Kalvium Community to capture your Auth Token automatically.
+    Browse app.kalvium.community/livebooks?semester={your_semester_number} to capture your Auth Token automatically.
+  </div>
+
+  <!-- User Info Section -->
+  <div id="user-info-section" style="display: none; margin-bottom: 15px; padding: 12px; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <h4 style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 6px;">User Info</h4>
+    <div style="font-size: 12px; line-height: 1.8;">
+      <div><strong>Email:</strong> <span id="info-email">-</span></div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <strong>Token:</strong>
+        <div id="token-scroll-container" style="overflow-x: auto; max-width: 280px; white-space: nowrap;">
+          <code id="info-token" style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 3px; font-size: 10px;">-</code>
+        </div>
+      </div>
+      <div><strong>Registered:</strong> <span id="info-created">-</span></div>
+      <div><strong>Token Updated:</strong> <span id="info-updated">-</span></div>
+      <div><strong>Last Submitted:</strong> <span id="info-last-submitted">-</span></div>
+    </div>
   </div>
 
   <label for="work-mode">Working Mode</label>
@@ -104,6 +167,15 @@
   <button id="deactivate-btn" style="background-color: #dc3545; margin-top: 10px;">Deactivate & Delete</button>
   
   <div id="message" style="margin-top: 10px; text-align: center;"></div>
+
+  <div style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 6px; border-left: 3px solid #2196f3; font-size: 11px; color: #555; line-height: 1.6;">
+    <strong style="color: #1976d2;">Token Info:</strong>
+    <ul style="margin: 6px 0 0 0; padding-left: 18px;">
+      <li>Your token expires after <strong>~1 month</strong>.</li>
+      <li>A fresh token is auto-captured daily when you visit <strong>app.kalvium.community</strong>.</li>
+      <li>Click <strong>Save & Activate</strong> to manually sync your latest token to the server.</li>
+    </ul>
+  </div>
 
   <script src="popup.js"></script>
 </body>

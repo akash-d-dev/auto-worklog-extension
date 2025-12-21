@@ -5,13 +5,14 @@
   "description": "Automatically captures auth token and allows users to submit worklogs daily.",
   "permissions": [
     "storage",
-    "webRequest",
     "activeTab",
     "scripting"
   ],
   "host_permissions": [
     "https://*.kalvium.community/*",
-    "http://localhost:3000/*"
+    "https://app.kalvium.community/*",
+    "http://localhost:3000/*",
+    "https://auto-worklog-submission.onrender.com/*"
   ],
   "background": {
     "service_worker": "background.js"
