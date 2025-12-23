@@ -9,9 +9,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SAVE_BETTER_CREDENTIALS') {
     console.log('Received Long-Lived Token from Content Script (app.kalvium.community)');
     
-    // Save token to Local Storage
-    chrome.storage.local.set({ authToken: message.token }, () => {
-        console.log('Long-Lived Token saved.');
+    // Save token and capture timestamp to Local Storage
+    const capturedOn = new Date().toISOString();
+    chrome.storage.local.set({ 
+        authToken: message.token,
+        authTokenCapturedOn: capturedOn
+    }, () => {
+        console.log('Long-Lived Token saved with timestamp:', capturedOn);
         
         // Check if we need to sync with server (based on server's updatedAt date)
         checkAndRefreshToken(message.token); 
@@ -24,10 +28,6 @@ async function checkAndRefreshToken(token) {
     // 1. Check Local Storage for last server update
     // This avoids hitting the DB every time if we already know it's updated today
     const storageData = await chrome.storage.local.get(['lastServerUpdate']);
-    if (!storageData.lastServerUpdate) {
-        console.log('No last server update found...skipping token sync.');
-        return;
-    }
     const lastUpdate = storageData.lastServerUpdate;
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -35,12 +35,12 @@ async function checkAndRefreshToken(token) {
 
     if (lastUpdate) {
         lastUpdateStr = new Date(lastUpdate).toISOString().split('T')[0];
-    }
-
-    // 2. If locally stored date is TODAY, we assume we are synced. Skip.
-    if (lastUpdateStr === todayStr) {
-        console.log('Token sync skipped (Local storage says updated today).');
-        return;
+        
+        // If locally stored date is TODAY, we assume we are synced. Skip.
+        if (lastUpdateStr === todayStr) {
+            console.log('Token sync skipped (Local storage says updated today).');
+            return;
+        }
     }
 
     console.log(`Local data outdated (Last: ${lastUpdateStr || 'Never'}). Syncing token...`);

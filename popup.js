@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Captured Token Elements
     const statusText = document.getElementById('status-text');
+    const capturedOnText = document.getElementById('captured-on-text');
+    const capturedOnValue = document.getElementById('captured-on-value');
     const capturedTokenScroll = document.getElementById('captured-token-scroll');
     const capturedTokenValue = document.getElementById('captured-token-value');
 
@@ -69,24 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 infoUpdated.textContent = formatDate(data.lastTokenRefreshedAt || data.updatedAt);
                 infoLastSubmitted.textContent = data.lastSubmittedAt ? formatDate(data.lastSubmittedAt) : 'Never';
                 
-                // Logic to check if we are using the latest token
-                // We compare the CURRENT date with the server's lastTokenRefreshedAt date
-                // If the refresh date is from today, then it is latest.
-                let isLatest = false;
-                const tokenRefreshDate = data.lastTokenRefreshedAt || data.updatedAt;
-                if (tokenRefreshDate) {
-                    const refreshedAtDateStr = new Date(tokenRefreshDate).toISOString().split('T')[0];
-                    const todayDateStr = new Date().toISOString().split('T')[0];
-                    
-                    if (refreshedAtDateStr === todayDateStr) {
-                        isLatest = true;
-                    }
-                    // This allows background.js to check this date without hitting the API
-                    chrome.storage.local.set({ lastServerUpdate: tokenRefreshDate });
-                }
+                // Check if captured token matches server token
+                // Extract visible portion from masked token (remove asterisks)
+                const visiblePortion = maskedToken.replace(/^\*+/, '');
+                const isTokenCurrent = authToken.includes(visiblePortion);
                 
-                infoUsingLatest.textContent = isLatest ? 'Yes' : "No (don't worry if updated today)";
-                infoUsingLatest.style.color = isLatest ? '#90EE90' : '#FFB6C1';
+                infoUsingLatest.textContent = isTokenCurrent ? 'Yes' : 'No (Don\'t worry if updated <30 days ago.)';
+                infoUsingLatest.style.color = isTokenCurrent ? '#90EE90' : '#FFB6C1';
 
                 // Populate Work Mode from Server
                 if (data.workMode) {
@@ -142,12 +133,20 @@ document.addEventListener('DOMContentLoaded', () => {
     userInfoSection.style.display = 'none';
     if (userNotFoundSection) userNotFoundSection.style.display = 'none';
 
-    chrome.storage.local.get(['authToken'], (result) => {
+    chrome.storage.local.get(['authToken', 'authTokenCapturedOn'], (result) => {
         if (result.authToken) {
             statusDiv.style.display = 'block'; // Show status again
             statusText.textContent = 'Auth Token: Captured';
             statusDiv.classList.remove('status-inactive');
             statusDiv.classList.add('status-active');
+            
+            // Show when token was captured
+            if (result.authTokenCapturedOn) {
+                capturedOnText.style.display = 'block';
+                capturedOnValue.textContent = formatDate(result.authTokenCapturedOn);
+            } else {
+                capturedOnText.style.display = 'none';
+            }
             
             // Show full captured token
             capturedTokenScroll.style.display = 'block';
@@ -161,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loadingIndicator) loadingIndicator.style.display = 'none';
             statusDiv.style.display = 'block'; // Show status again
             statusText.textContent = 'Auth Token: Missing';
+            capturedOnText.style.display = 'none';
             capturedTokenScroll.style.display = 'none';
             userInfoSection.style.display = 'none';
             if (userNotFoundSection) userNotFoundSection.style.display = 'none'; // Ensure this is also hidden
@@ -301,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         statusDiv.classList.remove('status-active');
                         statusDiv.classList.add('status-inactive');
                         
+                        capturedOnText.style.display = 'none';
                         capturedTokenScroll.style.display = 'none';
                         userInfoSection.style.display = 'none';
                         if (userNotFoundSection) userNotFoundSection.style.display = 'none';
@@ -336,13 +337,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (userNotFoundSection) userNotFoundSection.style.display = 'none';
 
             // Re-run the initial load logic
-            // Update to match new logic: fetch only token
-            chrome.storage.local.get(['authToken'], (result) => {
+            // Update to match new logic: fetch token and captured timestamp
+            chrome.storage.local.get(['authToken', 'authTokenCapturedOn'], (result) => {
                 if (result.authToken) {
                     statusText.textContent = 'Auth Token: Captured';
                     statusDiv.classList.remove('status-inactive');
                     statusDiv.classList.add('status-active');
                     statusDiv.style.display = 'block';
+                    
+                    // Show when token was captured
+                    if (result.authTokenCapturedOn) {
+                        capturedOnText.style.display = 'block';
+                        capturedOnValue.textContent = formatDate(result.authTokenCapturedOn);
+                    } else {
+                        capturedOnText.style.display = 'none';
+                    }
                     
                     capturedTokenScroll.style.display = 'block';
                     capturedTokenValue.textContent = result.authToken;
@@ -358,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusDiv.classList.add('status-inactive');
                     statusDiv.style.display = 'block';
                     
+                    capturedOnText.style.display = 'none';
                     capturedTokenScroll.style.display = 'none';
                     userInfoSection.style.display = 'none';
                     if (userNotFoundSection) userNotFoundSection.style.display = 'none';
