@@ -2,62 +2,90 @@
 // const SERVER_URL = 'http://localhost:3000';
 const SERVER_URL = 'https://auto-worklog-submission.onrender.com';
 
+// Sync lock to prevent concurrent operations
+let syncInProgress = false;
+let pendingSync = null;
+
 // LISTEN FOR LONG-LIVED TOKEN FROM app.kalvium.community
-// This is the MAIN and ONLY way to capture tokens now.
-// User must visit app.kalvium.community for the extension to work.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SAVE_BETTER_CREDENTIALS') {
-    console.log('Received Long-Lived Token from Content Script (app.kalvium.community)');
-    
-    // Save token and capture timestamp to Local Storage
+    const newToken = message.token;
     const capturedOn = new Date().toISOString();
+    
+    console.log('Received token from content script');
+    
+    // Save token to storage first, then trigger sync
     chrome.storage.local.set({ 
-        authToken: message.token,
+        authToken: newToken,
         authTokenCapturedOn: capturedOn
-    }, () => {
-        console.log('Long-Lived Token saved with timestamp:', capturedOn);
+    }, async () => {
+        console.log('Token saved to storage at:', capturedOn);
         
-        // Check if we need to sync with server (based on server's updatedAt date)
-        checkAndRefreshToken(message.token); 
+        // Small delay to ensure storage is fully committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Trigger sync - it will read the LATEST token from storage
+        scheduleSync();
     });
   }
 });
 
-async function checkAndRefreshToken(token) {
+function scheduleSync() {
+  if (syncInProgress) {
+    // A sync is running, mark that we need another sync after it completes
+    pendingSync = true;
+    console.log('Sync in progress, will retry after current sync completes');
+    return;
+  }
+  
+  syncLatestTokenToServer();
+}
+
+async function syncLatestTokenToServer() {
+  syncInProgress = true;
+  pendingSync = false;
+  
   try {
-    // 1. Check Local Storage for last server update
-    // This avoids hitting the DB every time if we already know it's updated today
-    const storageData = await chrome.storage.local.get(['lastServerUpdate']);
-    const lastUpdate = storageData.lastServerUpdate;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    let lastUpdateStr = '';
-
-    if (lastUpdate) {
-        lastUpdateStr = new Date(lastUpdate).toISOString().split('T')[0];
-        
-        // If locally stored date is TODAY, we assume we are synced. Skip.
-        if (lastUpdateStr === todayStr) {
-            console.log('Token sync skipped (Local storage says updated today).');
-            return;
-        }
-    }
-
-    console.log(`Local data outdated (Last: ${lastUpdateStr || 'Never'}). Syncing token...`);
+    // ALWAYS read the CURRENT token from storage right before syncing
+    const storageData = await chrome.storage.local.get(['authToken', 'lastSyncedToken']);
+    const currentToken = storageData.authToken;
+    const lastSyncedToken = storageData.lastSyncedToken;
     
-    // 3. Call refresh endpoint
+    if (!currentToken) {
+      console.log('No token in storage, nothing to sync');
+      return;
+    }
+    
+    // Skip if this exact token was already synced
+    if (currentToken === lastSyncedToken) {
+      console.log('Current token already synced, skipping');
+      return;
+    }
+    
+    console.log('Syncing token to server...');
+    
     const response = await fetch(`${SERVER_URL}/api/refresh-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authToken: token })
+        body: JSON.stringify({ authToken: currentToken })
     });
 
     if (response.ok) {
-        console.log('Token synced successfully to server.');
-        // Update local storage so we don't hit server again today
-        // NOTE: Ideally we should use the server's response time, but local time is fine for this check
-        const nowIso = new Date().toISOString();
-        await chrome.storage.local.set({ lastServerUpdate: nowIso });
+        // Before marking as synced, verify the token hasn't changed during the API call
+        const verifyData = await chrome.storage.local.get(['authToken']);
+        
+        if (verifyData.authToken === currentToken) {
+          // Token is still the same, safe to mark as synced
+          await chrome.storage.local.set({ 
+            lastSyncedToken: currentToken,
+            lastServerUpdate: new Date().toISOString()
+          });
+          console.log('Token synced successfully');
+        } else {
+          // Token changed during sync, don't mark as synced - let the next sync handle it
+          console.log('Token changed during sync, will sync new token');
+          pendingSync = true;
+        }
     } else {
         const errData = await response.json().catch(() => ({}));
         console.error('Failed to sync token:', errData);
@@ -65,5 +93,13 @@ async function checkAndRefreshToken(token) {
 
   } catch (error) {
     console.error('Error syncing token:', error);
+  } finally {
+    syncInProgress = false;
+    
+    // If a new token arrived while we were syncing, sync again
+    if (pendingSync) {
+      console.log('Processing pending sync...');
+      setTimeout(syncLatestTokenToServer, 200);
+    }
   }
 }
